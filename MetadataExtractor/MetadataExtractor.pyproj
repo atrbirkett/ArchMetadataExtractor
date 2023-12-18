@@ -22,11 +22,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="MetadataExtractor.py" />
-    <Compile Include="metadata_extractor_FileTree.py" />
+    <Compile Include="metadata_extractor_FolderTree.py" />
     <Compile Include="metadata_project.py" />
-    <Compile Include="metadata_extractor_rasters.py" />
-    <Compile Include="metadata_extractor_shp.py" />
-    <Compile Include="metadata_extractor_other.py" />
+    <Compile Include="metadata_extractor_RasterVector.py" />
+    <Compile Include="metadata_extractor_Geospatial.py" />
+    <Compile Include="metadata_extractor_Other.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="metadata_extractor_GeoTIFF.py" />
