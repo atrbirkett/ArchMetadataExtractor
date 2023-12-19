@@ -300,7 +300,171 @@ def create_Geospatial_metadata(metadata_records, output_path, root_element_name)
     else:
         print("No supported files found for XML creation.")
 
+##################
+##################
+######
+####### Other Metadata
+######
+##################
+##################
 
+# Define extract_csv_metadata function
+def extract_file_metadata(file_path, file_name):
+    file_stats = os.stat(file_path)
+    creation_date = datetime.fromtimestamp(file_stats.st_ctime).strftime('%Y-%m-%d %H:%M:%S')
+    modification_date = datetime.fromtimestamp(file_stats.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+    file_size_mb = file_stats.st_size / (1024 * 1024)
+    file_extension = os.path.splitext(file_name)[1]
+
+    return {
+        'FILE_PATH': file_path,                    
+        'FILE_NAME': os.path.splitext(file_name)[0],
+        'FILE_EXTENSION': file_extension,
+        'FILE_SIZE_MB': f"{file_size_mb:.2f}",
+        'FILE_FORMAT': '',  # Placeholder for file format extraction
+        'FILE_SOFTWARE': '',  # Placeholder for software extraction
+        'FILE_HARDWARE': '',  # Placeholder for hardware extraction
+        'FILE_OPSYS': '',  # Placeholder for operating system extraction
+        'FILE_CREATED': creation_date,
+        'FILE_UPDATED': modification_date,
+        'FILE_LINKED': '',  # Placeholder for linked files
+        'FILE_DATES': '',  # Placeholder for linked files,
+        'FILE_IDENTIFIER': '',  # Placeholder for identifier extraction
+        'FILE_CREATORS': '',  # Placeholder for creators extraction
+    }
+
+# Function to extract metadata from a .csv file with "_G_" in the name
+def extract_csv_metadata(file_path, file_name):
+    file_stats = os.stat(file_path)
+    creation_date = datetime.fromtimestamp(file_stats.st_ctime).strftime('%Y-%m-%d %H:%M:%S')
+    modification_date = datetime.fromtimestamp(file_stats.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+    file_size_mb = file_stats.st_size / (1024 * 1024)
+
+    if "_G_" in file_name:
+        # Update variables with specific metadata for these files
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)  # Calculate file size in MB
+        # Extract file creation date (you need to replace this with your logic)
+        file_creation_date = "YYYY-MM-DD"  # Replace with your extraction logic
+    
+        return {
+        'FILE_PROJECTID': '',  # Placeholder for manual entry
+        'FILE_NAME': os.path.splitext(file_name)[0],
+        'FILE_PATH': os.path.dirname(file_path),
+        'FILE_EXTENSION': os.path.splitext(file_name)[1],
+        'FILE_SIZE_MB': f"{file_size_mb:.2f}",
+        'FILE_DESCRIPTION': '',  # Placeholder for manual entry
+        'FILE_TYPE': 'Point',  # Placeholder for manual entry
+        'FILE_FEATURECOUNT': '',  # Placeholder for manual entry
+        'FILE_METHOD': '',  # Placeholder for manual entry
+        'FILE_CREATED': creation_date,
+        'FILE_UPDATED': modification_date,
+        'FILE_DATES': '',  # Placeholder for manual entry,
+        'FILE_COVERAGE': '',  # Placeholder for manual entry
+        'FILE_PCS': '',  # Placeholder for manual entry
+        'FILE_GCS': '',  # Placeholder for manual entry
+        'FILE_SCALE': '',  # Placeholder for manual entry
+        'FILE_RELATED': '',  # Placeholder for manual entry
+    }
+
+# Define search_other_files function
+def search_other_files(directory, extensions):
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if any(file.lower().endswith(ext) for ext in extensions):
+                yield os.path.join(root, file), file
+
+def search_other_files(directory, extensions):
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if any(file.lower().endswith(ext) for ext in extensions):
+                yield os.path.join(root, file), file
+
+def process_other_metadata(start_dir, output_xml_name="METADATA_Other.xml"):
+    root = ET.Element("OtherFilesMetadata")
+    file_extensions = ['.txt', '.pdf', '.csv', '.dwg', '.dxf']
+
+    metadata_records = []
+
+    for path, name in search_other_files(start_dir, file_extensions):
+        if name.lower().endswith('.csv') and "_G_" in name:
+            metadata = extract_csv_metadata(path, name)
+        else:
+            metadata = extract_file_metadata(path, name)
+        if metadata:
+            metadata_records.append(metadata)
+
+    for metadata in metadata_records:
+        file_element = ET.SubElement(root, "File")  # Ensure 'root' is an Element object
+        for key, value in metadata.items():
+            ET.SubElement(file_element, key).text = str(value)
+
+    if metadata_records:
+        xml_output_path = os.path.join(start_dir, output_xml_name)
+        tree = ET.ElementTree(root)
+        tree.write(xml_output_path, encoding='utf-8', xml_declaration=True)
+        print(f"The metadata XML file has been created at: {xml_output_path}")
+    else:
+        print("No other files found for XML creation.")
+
+
+##################
+##################
+######
+####### Geophysics Metadata
+######
+##################
+##################
+
+# Function to prompt for file metadata and return it as a dictionary
+def get_file_metadata(file_path):
+    file_name = os.path.basename(file_path)
+    file_size_bytes = os.path.getsize(file_path)
+    file_size_mb = file_size_bytes / (1024 * 1024)  # Convert bytes to megabytes
+
+    # Check if the file name contains "_COMP_" or the file extension is .xcp or .xgd
+    if "_COMP_" in file_name.upper() or file_name.lower().endswith(('.xcp', '.xgd')):
+        return {
+            'FILE_PATH': file_path,
+            'FILE_NAME': file_name,
+            'FILE_DESCRIPTION': '',  # Placeholder for manual entry 
+            'FILE_INSTRUMENT': '',  # Placeholder for manual entry' 
+            'FILE_UNITS': '',  # Placeholder for manual entry 
+            'FILE_UTM':  '',  # Placeholder for manual entry  
+            'FILE_SURVEY': '',  # Placeholder for manual entry  
+            'FILE_NORTHWEST': '',  # Placeholder for manual entry  
+            'FILE_SOUTHEAST': '',  # Placeholder for manual entry  
+            'FILE_COMMENTS': '',  # Placeholder for manual entry  
+            'FILE_FIRSTTRAVDIR': '',  # Placeholder for manual entry  
+            'FILE_COLLECTIONMETHOD': '',  # Placeholder for manual entry  
+            'FILE_SENSORS': '',  # Placeholder for manual entry  
+            'FILE_DUMMY': '',  # Placeholder for manual entry  
+            'FILE_READINGSIZE': '',  # Placeholder for manual entry  
+            'FILE_SURVEYSIZE': '',  # Placeholder for manual entry  
+            'FILE_GRIDSIZE': '',  # Placeholder for manual entry  
+            'FILE_XINT': '',  # Placeholder for manual entry  
+            'FILE_YINT': '',  # Placeholder for manual entry  
+            'FILE_SIZE': f"{file_size_mb:.2f} MB",  # Include file size in MB
+        }
+
+    # Default metadata for non-compressed files
+    return None
+
+def process_geophysics_metadata(start_dir, output_xml_name="METADATA_Geophysics.xml"):
+    root = ET.Element("FileMetadata")
+
+    for root_dir, _, files in os.walk(start_dir):
+        for file in files:
+            file_path = os.path.join(root_dir, file)
+            file_metadata = get_file_metadata(file_path)
+            if file_metadata:
+                file_element = ET.SubElement(root, "File")
+                for key, value in file_metadata.items():
+                    ET.SubElement(file_element, key).text = str(value)
+
+    output_xml_path = os.path.join(start_dir, output_xml_name)
+    tree = ET.ElementTree(root)
+    tree.write(output_xml_path, encoding='utf-8', xml_declaration=True)
+    print(f"File metadata has been saved to {output_xml_path}")
 
 ##################
 ##################
@@ -337,3 +501,9 @@ if __name__ == "__main__":
     # Create geospatial metadata XML
     output_xml_path = os.path.join(directory, 'METADATA_Geospatial.xml')
     create_Geospatial_metadata(geospatial_metadata_records, output_xml_path, "GeospatialMetadata")
+    
+    # Process Other metadata
+    process_other_metadata(directory)
+
+    # Process Geophysics metadata
+    process_geophysics_metadata(directory)
