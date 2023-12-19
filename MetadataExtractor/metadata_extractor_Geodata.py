@@ -87,20 +87,6 @@ def create_xml(metadata_records, output_path, root_element_name):
     tree = ET.ElementTree(root)
     tree.write(output_path, encoding='utf-8', xml_declaration=True)
 
-if __name__ == "__main__":
-    start_dir = input("Please enter the directory to search for files: ")
-
-    shp_files, geotiff_files = search_files(start_dir)
-
-    metadata_records = []
-
-    if shp_files:
-        metadata_records.extend([extract_metadata(file, '.shp') for file in shp_files])
-
-    if geotiff_files:
-        metadata_records.extend([extract_metadata(file, '.tif') for file in geotiff_files])
-        metadata_records.extend([extract_metadata(file, '.tiff') for file in geotiff_files])
-
     # Remove None values from metadata_records
     metadata_records = [metadata for metadata in metadata_records if metadata is not None]
 

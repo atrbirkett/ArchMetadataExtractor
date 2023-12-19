@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>0f8f33e3-28ea-4afc-b5e2-0e30a8424ed4</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>MetadataExtractor.py</StartupFile>
+    <StartupFile>metadata_extractor_main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -22,7 +22,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="metadata_extractor_Geodata.py" />
-    <Compile Include="MetadataExtractor.py" />
+    <Compile Include="metadata_extractor_main.py" />
     <Compile Include="metadata_extractor_FolderTree.py" />
     <Compile Include="metadata_extractor_Geophys.py" />
     <Compile Include="metadata_project.py" />

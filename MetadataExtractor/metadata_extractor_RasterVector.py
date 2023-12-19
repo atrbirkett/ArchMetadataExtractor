@@ -70,7 +70,3 @@ def create_image_metadata(start_dir):
     tree.write(xml_output_path, encoding='utf-8', xml_declaration=True)
 
     print(f"The metadata XML file has been created at: {xml_output_path}")
-
-if __name__ == "__main__":
-    start_dir = input("Please enter the directory to search for raster and vector files: ")
-    create_image_metadata(start_dir)

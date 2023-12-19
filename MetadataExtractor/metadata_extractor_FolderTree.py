@@ -41,6 +41,6 @@ def create_file_tree_xml(start_dir):
 
     print(f"XML file tree has been saved to {xml_output_path}")
 
-if __name__ == "__main__":
+    if __name__ == "__main__":
     start_dir = input("Please enter the directory to create a file tree XML: ")
     create_file_tree_xml(start_dir)
