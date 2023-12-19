@@ -1,16 +1,14 @@
 # ArchArchMetadataExtractor
-ArchMetadataExtractor is a Python tool for creating metadata in accordance with the Archaeology Data Service (ADS) Good Practice guidelines. Metadata is crucial for documenting archaeological data and ensuring its long-term accessibility and usability. This tool simplifies the metadata creation process, making it easier for archaeologists, researchers, and data curators to adhere to ADS standards.
+ArchMetadataExtractor is a comprehensive Python tool designed to streamline the process of creating detailed and structured metadata for archaeological projects. This tool is tailored to meet the specific needs of archaeologists, data curators, and researchers, focusing on thorough documentation and adherence to good data management practices.
 
 ## Features
-**Compliance:** ArchMetadataExtractor ensures that your metadata aligns with the ADS Good Practice guidelines, promoting best practices in data management and preservation.
+**Compliance:** ArchMetadataExtractor facilitates the generation of extensive metadata, encompassing project details, file tree overview, raster/vector file information, geospatial data, other files' metadata, and detailed geophysics files data, all exported as archive friendly XML files.
 
-**User-Friendly:** The tool offers a user-friendly interface and straightforward commands, making it accessible to users with varying levels of technical expertise.
+**User-Friendly:** Featuring a tkinter-based graphical user interface, the tool allows users to easily input and review metadata, enhancing user experience and accessibility.
 
-**Metadata Templates:** ArchMetadataExtractor provides templates and prompts to guide you through the creation of essential metadata elements, such as data descriptions, file formats, and provenance information.
+**Support for Core Archival Data Types:** The tool is equipped to handle the core archival data formats including images, geospatial raster and vector files, and other common file types, ensuring versatility.
 
-**Customization:** While adhering to ADS standards, you can customize metadata to suit your specific archaeological data, allowing for flexibility in documentation.
-
-**Export Options:** Easily export your metadata in standard formats, such as CSV, XML (coming soon), or JSON (coming soon) for integration with archaeological datasets and sharing with others.
+**Geospatial Data Handling:** Functionality to process geospatial metadata, including shapefiles and GeoTIFF files, it is particularly suited for projects involving detailed geographical data.
 
 ## Getting Started
 To get started with ArchMetadataExtractor, follow these steps:
@@ -31,4 +29,4 @@ To get started with ArchMetadataExtractor, follow these steps:
 Any contributions from the open-source community is always welcome. If you have ideas for improvements, bug fixes, or new features, please submit a pull request!
 
 ## Acknowledgments
-ArchMetadataExtractor is developed by Alexander Birkett and aims to promote best practices in archaeological data management and preservation.
+ArchMetadataExtractor is developed by Alexander Birkett.
