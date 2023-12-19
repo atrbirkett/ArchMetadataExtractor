@@ -1,5 +1,5 @@
-import csv
 import os
+import xml.etree.ElementTree as ET
 
 # Function to prompt for project metadata and return it as a dictionary
 def get_project_metadata():
@@ -18,25 +18,30 @@ def get_project_metadata():
         'PROJECT_COPYRIGHT': input("Enter the PROJECT_COPYRIGHT: "),
     }
 
-# Prompt for the directory to save the output CSV file
-save_directory = input("Enter the directory where you want to save the CSV file (e.g., C:/Documents/): ")
-if not os.path.isdir(save_directory):
-    print("Directory does not exist. Creating the directory.")
-    os.makedirs(save_directory, exist_ok=True)
-
-# Prompt for the output CSV file name
-output_csv_name = input("Enter the output CSV file name (e.g., project_metadata.csv): ")
-
-# Full path for the output CSV file
-output_csv_path = os.path.join(save_directory, output_csv_name)
+# Create an XML root element for project metadata
+root = ET.Element("ProjectMetadata")
 
 # Get project metadata from the user
 project_metadata = get_project_metadata()
 
-# Write the project metadata to a CSV file
-with open(output_csv_path, 'w', newline='') as csvfile:
-    writer = csv.DictWriter(csvfile, fieldnames=project_metadata.keys())
-    writer.writeheader()
-    writer.writerow(project_metadata)
+# Add project metadata to the XML tree
+for key, value in project_metadata.items():
+    ET.SubElement(root, key).text = value
 
-print(f"Project metadata has been saved to {output_csv_path}")
+# Prompt for the directory to save the output XML file
+save_directory = input("Enter the directory where you want to save the XML file (e.g., C:/Documents/): ")
+if not os.path.isdir(save_directory):
+    print("Directory does not exist. Creating the directory.")
+    os.makedirs(save_directory, exist_ok=True)
+
+# Prompt for the output XML file name
+output_xml_name = input("Enter the output XML file name (e.g., project_metadata.xml): ")
+
+# Full path for the output XML file
+output_xml_path = os.path.join(save_directory, output_xml_name)
+
+# Write the XML tree to the output XML file
+tree = ET.ElementTree(root)
+tree.write(output_xml_path, encoding='utf-8', xml_declaration=True)
+
+print(f"Project metadata has been saved to {output_xml_path}")

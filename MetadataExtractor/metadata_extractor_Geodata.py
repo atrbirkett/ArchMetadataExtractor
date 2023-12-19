@@ -27,6 +27,7 @@ def extract_metadata(file_path, file_extension):
                 file_size_bytes = os.path.getsize(file_path)
                 file_size_mb = file_size_bytes / 1048576  # Convert bytes to megabytes
                 return {
+                    'FILE_PATH': file_path,                    
                     'FILE_NAME': os.path.splitext(os.path.basename(file_path))[0],
                     'FILE_LOCATION': os.path.dirname(file_path),
                     'FILE_EXTENSION': os.path.splitext(file_path)[1],

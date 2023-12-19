@@ -1,55 +1,46 @@
 import os
-import csv
+import xml.etree.ElementTree as ET
 
-def create_file_tree(start_dir):
-    # Prepare the header for the CSV
-    headers = ['TREE_FOLDERNAME', 'TREE_SIZEMB', 'TREE_FILECOUNT']
+def get_folder_size_and_file_count(folder_path):
+    total_size = 0
+    file_count = 0
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            if not os.path.islink(file_path):  # Skip symbolic links
+                total_size += os.path.getsize(file_path)
+                file_count += 1
+    size_mb = total_size / (1024 * 1024)  # Convert bytes to megabytes
+    return round(size_mb, 2), file_count  # Round to 2 decimal places
 
-    # Function to get folder size and file count
-    def get_folder_details(folder_path):
-        total_size = 0
-        file_count = 0
-        for root, dirs, files in os.walk(folder_path, topdown=True):
-            # Skip folders that end with '.files' and '.zip' files
-            dirs[:] = [d for d in dirs if not d.endswith('.files')]
-            files = [f for f in files if not f.lower().endswith('.zip')]
-            for f in files:
-                file_path = os.path.join(root, f)
-                if not os.path.islink(file_path):  # Check if it's not a symbolic link
-                    total_size += os.path.getsize(file_path)
-                    file_count += 1
-        size_mb = total_size / (1024 * 1024)  # Convert bytes to megabytes
-        return round(size_mb, 2), file_count  # Round the size to 2 decimal places
+def create_folder_element(folder_path, parent_xml_element):
+    folder_name = os.path.basename(folder_path)
+    folder_size, file_count = get_folder_size_and_file_count(folder_path)
+    folder_element = ET.SubElement(parent_xml_element, 'FOLDER', {
+        'FOLDER_Name': folder_name,
+        'FOLDER_SizeMB': str(folder_size),
+        'FOLDER_FileCount': str(file_count)
+    })
 
-    # List to keep all folder records
-    folder_records = []
+    for item in os.listdir(folder_path):
+        item_full_path = os.path.join(folder_path, item)
+        if os.path.isdir(item_full_path):
+            create_folder_element(item_full_path, folder_element)
+        else:
+            file_element = ET.SubElement(folder_element, 'FILE', {'FILE_Name': item})
+            # Optionally, add file details here
 
-    # Walk through the directory and subdirectories
-    for root, dirs, files in os.walk(start_dir, topdown=True):
-        # Skip folders that end with '.files' and '.zip' files
-        if root.endswith('.files') or root.lower().endswith('.zip'):
-            dirs[:] = []  # Don't walk into subdirectories
-            continue
-        size_mb, file_count = get_folder_details(root)
-        # Calculate folder depth for indentation
-        depth = root.replace(start_dir, '').count(os.sep)
-        indent = (' - ' * depth) if depth else ''
-        # Include folder names in quotes
-        folder_name = '"' + (os.path.basename(root) if os.path.basename(root) else os.path.basename(start_dir)) + '"'
-        folder_records.append([indent + folder_name, size_mb, file_count])
+def create_file_tree_xml(start_dir):
+    root = ET.Element('FolderTree')
+    create_folder_element(start_dir, root)
 
-    # Path to the output CSV file
-    csv_output_path = os.path.join(start_dir, 'METADATA_FolderTree.csv')
+    # Write the XML tree to a file
+    tree = ET.ElementTree(root)
+    xml_output_path = os.path.join(start_dir, 'METADATA_FolderTree.xml')
+    tree.write(xml_output_path, encoding='utf-8', xml_declaration=True)
 
-    # Write the folder records to a CSV file
-    with open(csv_output_path, 'w', newline='') as csvfile:
-        csvwriter = csv.writer(csvfile)
-        csvwriter.writerow(headers)
-        csvwriter.writerows(folder_records)
-
-    print(f"The file tree has been saved to {csv_output_path}")
+    print(f"XML file tree has been saved to {xml_output_path}")
 
 if __name__ == "__main__":
-    # Prompt for the directory to create a file tree
-    start_dir = input("Please enter the directory to create a file tree: ")
-    create_file_tree(start_dir)
+    start_dir = input("Please enter the directory to create a file tree XML: ")
+    create_file_tree_xml(start_dir)

@@ -22,9 +22,12 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="ArchMetadataExtractor.py" />
+    <Compile Include="ArchMETADATAextractor_All.py" />
+    <Compile Include="metadata_extractor_Geodata.py" />
     <Compile Include="integrated_metadata_extractor.py" />
     <Compile Include="MetadataExtractor.py" />
     <Compile Include="metadata_extractor_FolderTree.py" />
+    <Compile Include="metadata_extractor_Geophys.py" />
     <Compile Include="metadata_project.py" />
     <Compile Include="metadata_extractor_RasterVector.py" />
     <Compile Include="metadata_extractor_Geospatial.py" />
