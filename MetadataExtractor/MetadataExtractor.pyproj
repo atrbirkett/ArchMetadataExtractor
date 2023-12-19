@@ -21,6 +21,8 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ArchMetadataExtractor.py" />
+    <Compile Include="integrated_metadata_extractor.py" />
     <Compile Include="MetadataExtractor.py" />
     <Compile Include="metadata_extractor_FolderTree.py" />
     <Compile Include="metadata_project.py" />

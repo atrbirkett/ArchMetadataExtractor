@@ -63,5 +63,5 @@ def create_image_metadata(start_dir):
     print(f"The metadata CSV file has been created at: {csv_output_path}")
 
 if __name__ == "__main__":
-    start_dir = input("Please enter the directory to search for image files: ")
+    start_dir = input("Please enter the directory to search for raster and vector files: ")
     create_image_metadata(start_dir)

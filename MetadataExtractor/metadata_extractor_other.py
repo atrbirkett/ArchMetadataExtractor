@@ -70,5 +70,5 @@ def search_other_files(start_dir):
 
 if __name__ == "__main__":
     # Prompt for the directory to search for files
-    start_dir = input("Please enter the directory to search for shapefiles: ")
+    start_dir = input("Please enter the directory to search for other files: ")
     search_other_files(start_dir)
