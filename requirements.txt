@@ -1,4 +1,7 @@
 numpy
 Pillow
 rasterio
+tkinter
 geopandas
+subprocess
+xml.etree.ElementTree

@@ -1,6 +1,6 @@
 import os
 import tkinter as tk
-from tkinter import filedialog, simpledialog, Label, Text, Entry, Tk, Button
+from tkinter import filedialog, simpledialog, Label, Text, Entry, Tk, Button, Frame, Scrollbar, Canvas
 from tkinter.simpledialog import askstring
 from PIL import Image
 from numpy import rad2deg
@@ -8,6 +8,7 @@ import rasterio
 import geopandas as gpd
 from datetime import datetime
 import xml.etree.ElementTree as ET
+import sys 
 
 ##################
 ##################
@@ -23,8 +24,12 @@ def get_directory_info_via_gui():
 
     # Ask for the project directory
     directory = filedialog.askdirectory(title="Select Project Directory")
-    save_directory = directory
 
+    if not directory:
+        # User clicked "Cancel," so exit the program
+        sys.exit()
+
+    save_directory = directory
     root.destroy()  # Close the Tkinter root window
     return directory, save_directory
 
@@ -40,24 +45,45 @@ def get_directory_info_via_gui():
 def get_project_metadata():
     def on_ok():
         for key in entries:
-            # Get text from Text widget
             project_metadata[key] = entries[key].get("1.0", "end-1c")
         root.destroy()
 
-    project_metadata = {}
-    fields = ['Title', 'Description', 'Subject', 'Site_Location', 'Grid_Refrence', 'Coverage', 'Creators', 'Publisher', 'Contributors', 'Project_ID', 'Dates', 'Copyright']
- 
-    root = tk.Tk()
-    entries = {}
+    def focus_next_widget(event):
+        event.widget.tk_focusNext().focus()
+        return "break"  # prevent the default tab behavior
 
+    project_metadata = {}
+    fields = ['Title', 'Description', 'Subject', 'Site_Location', 'Grid_Refrence', 
+              'Coverage', 'Creators', 'Publisher', 'Contributors', 'Project_ID', 
+              'Dates', 'Copyright']
+
+    root = tk.Tk()
+    root.title("Project Metadata")
+    root.geometry("700x500")  # Set initial size
+
+    main_frame = Frame(root)
+    main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+    canvas = Canvas(main_frame)
+    scrollbar = Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+    scrollable_frame = Frame(canvas)
+
+    scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
+
+    entries = {}
     for field in fields:
-        Label(root, text=field).pack()
-        # Adjust height and width as needed
-        text_widget = Text(root, height=3, width=60)  
-        text_widget.pack()
+        Label(scrollable_frame, text=field).pack(anchor="w")
+        text_widget = Text(scrollable_frame, height=3, width=80)
+        text_widget.pack(pady=5)
+        text_widget.bind("<Tab>", focus_next_widget)
         entries[field] = text_widget
 
-    Button(root, text='OK', command=on_ok).pack()
+    Button(root, text='OK', command=on_ok).pack(pady=10)
 
     root.mainloop()
     return project_metadata
@@ -207,7 +233,7 @@ def create_image_metadata(start_dir):
             metadata_records.append(metadata)
 
     for metadata in metadata_records:
-        image_element = ET.SubElement(root, "Item")
+        image_element = ET.SubElement(root, "File")
         for key, value in metadata.items():
             ET.SubElement(image_element, key).text = str(value)
 
@@ -300,7 +326,7 @@ def create_Geospatial_metadata(metadata_records, output_path, root_element_name)
     metadata_records = [metadata for metadata in metadata_records if metadata is not None]
 
     for metadata in metadata_records:
-        element = ET.SubElement(root, "Item")
+        element = ET.SubElement(root, "File")
         for key, value in metadata.items():
             ET.SubElement(element, key).text = str(value)
 
@@ -327,7 +353,7 @@ def process_geospatial_metadata(directory):
     # Create XML root element for geospatial metadata and return it
     geospatial_root = ET.Element("Geospatial_Files")
     for metadata in geospatial_metadata_records:
-        element = ET.SubElement(geospatial_root, "Item")
+        element = ET.SubElement(geospatial_root, "File")
         for key, value in metadata.items():
             ET.SubElement(element, key).text = str(value)
     return geospatial_root
@@ -420,7 +446,7 @@ def process_other_metadata(start_dir):
         else:
             metadata = extract_file_metadata(path, name)
         if metadata:
-            file_element = ET.SubElement(root, "Item")
+            file_element = ET.SubElement(root, "File")
             for key, value in metadata.items():
                 ET.SubElement(file_element, key).text = str(value)
 
