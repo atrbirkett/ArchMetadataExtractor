@@ -14,6 +14,12 @@ def launch_metadata_extractor():
         subprocess.run(['python', 'metadata_extractor_main.py'], check=True)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to launch metadata_extractor_main.py: {e}")
+        
+def launch_folder_tree():
+    try:
+        subprocess.run(['python', 'metadata_foldertree.py'], check=True)
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to launch metadata_foldertree.py: {e}")
 
 def exit_application():
     # Display a confirmation message before exiting
@@ -25,11 +31,14 @@ def main():
     root.title("Main Menu")
     root.geometry("300x200")
 
-    btn_edit_xml = tk.Button(root, text="Launch EditXML", command=launch_edit_xml)
-    btn_edit_xml.pack(pady=10)
-
     btn_metadata_extractor = tk.Button(root, text="Launch Metadata Extractor", command=launch_metadata_extractor)
     btn_metadata_extractor.pack(pady=10)
+
+    btn_edit_xml = tk.Button(root, text="Edit an XML Metadata file", command=launch_edit_xml)
+    btn_edit_xml.pack(pady=10)
+    
+    btn_folder_tree = tk.Button(root, text="Create a Folder Tree file", command=launch_folder_tree)
+    btn_folder_tree.pack(pady=10)
 
     btn_exit = tk.Button(root, text="Exit", command=exit_application)
     btn_exit.pack(pady=10)
