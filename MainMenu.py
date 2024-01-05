@@ -34,6 +34,18 @@ def launch_folder_tree():
     except Exception as e:
         messagebox.showerror("Error", f"Failed to launch metadata_foldertree.py: {e}")
 
+def launch_project_geophys():
+    try:
+        subprocess.run(['python', 'project_folder_geophys.py'], check=True)
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to launch project_folder_geophys.py: {e}")
+
+def launch_project_archaeology():
+    try:
+        subprocess.run(['python', 'project_folder_archaeology.py'], check=True)
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to launch project_folder_archaeology.py: {e}")
+
 def exit_application():
     if messagebox.askokcancel("Exit", "Are you sure you want to exit?"):
         sys.exit()
@@ -71,6 +83,12 @@ def main():
     
     btn_folder_tree = ttk.Button(frame, text="Create a Folder Tree file", command=launch_folder_tree)
     btn_folder_tree.pack(pady=10, fill=tk.X)
+
+    btn_folder_geophys = ttk.Button(frame, text="Create a new geophysics project directory", command=launch_project_geophys)
+    btn_folder_geophys.pack(pady=10, fill=tk.X)
+
+    btn_folder_project = ttk.Button(frame, text="Create a new archaeology project directory", command=launch_project_archaeology)
+    btn_folder_project.pack(pady=10, fill=tk.X)
 
     btn_exit = ttk.Button(frame, text="Exit", command=exit_application)
     btn_exit.pack(pady=10, fill=tk.X)
