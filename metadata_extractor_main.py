@@ -1,9 +1,11 @@
 import os
 import tkinter as tk
 import PIL
+from PIL import Image, ImageFile
 from tkinter import filedialog, simpledialog, Label, Text, Entry, Tk, Button, Frame, Scrollbar, Canvas
 from tkinter.simpledialog import askstring
-from PIL import Image, DecompressionBombError
+import tkinter.messagebox as mb
+import webbrowser
 from numpy import rad2deg
 import rasterio
 import geopandas as gpd
@@ -102,27 +104,53 @@ def process_project_metadata():
 ##################
 ##################
 ######
+###### Exclusion of GIT, Agisoft and ArcGIS files from search and file tree
+######
+##################
+##################
+
+# Excludes Agisoft and ArcGIS files
+def is_excluded_dir(dir_name):
+    excluded_suffixes = [".files", ".gdb", ".Overviews"]
+    return any(dir_name.endswith(suffix) for suffix in excluded_suffixes)
+
+##################
+##################
+######
 ###### Folder Tree creation
 ######
 ##################
 ##################
+
+# Function to count folders for pop-up window
+def count_total_folders(folder_path):
+    folder_count = 0
+    for _, dirs, _ in os.walk(folder_path):
+        dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Apply exclusion
+        folder_count += len(dirs)
+    return folder_count
+
 
 # Function to get folder info and count
 def get_folder_size_and_file_count(folder_path):
     total_size = 0
     file_count = 0
     for root, dirs, files in os.walk(folder_path):
+        dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Apply exclusion
         for file in files:
             file_path = os.path.join(root, file)
             if not os.path.islink(file_path):  # Skip symbolic links
                 total_size += os.path.getsize(file_path)
                 file_count += 1
     SizeMB = total_size / (1024 * 1024)  # Convert bytes to megabytes
-    return round(SizeMB, 2), file_count  # Round to 2 decimal places
+    return round(SizeMB, 2), file_count
 
 # Function to create XML elements
 def create_folder_element(folder_path, parent_xml_element):
     folder_name = os.path.basename(folder_path)
+    if is_excluded_dir(folder_name):
+        return  # Skip excluded folders
+
     folder_size, file_count = get_folder_size_and_file_count(folder_path)
     folder_element = ET.SubElement(parent_xml_element, 'FOLDER', {
         'Name': folder_name,
@@ -136,12 +164,25 @@ def create_folder_element(folder_path, parent_xml_element):
             create_folder_element(item_full_path, folder_element)
         else:
             file_element = ET.SubElement(folder_element, 'FILE', {'Name': item})
-            # Optionally, add file details here
 
-# Function to write XML Folder Tree file
+# Function to create XML Folder Tree file with message box
 def create_folder_tree_xml(start_dir):
+    # Count the total number of folders
+    total_folders = count_total_folders(start_dir)
+
+    # Create and display the message window
+    message_root = tk.Tk()
+    message_root.title("Processing")
+    message_label = tk.Label(message_root, text=f"Creating file tree ({total_folders} folders)... please wait")
+    message_label.pack(padx=20, pady=20)
+    message_root.update()
+
+    # Perform folder tree creation
     root = ET.Element('Folder_Tree')
     create_folder_element(start_dir, root)
+
+    # Close the message window
+    message_root.destroy()
     return root
 
 ##################
@@ -152,38 +193,93 @@ def create_folder_tree_xml(start_dir):
 ##################
 ##################
 
+# Get total number of files in directory
+def count_files(directory, extensions):
+    file_count = 0
+    for root, dirs, files in os.walk(directory):
+        dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Exclude certain directories
+        for file in files:
+            if file.lower().endswith('.zip'):
+                continue  # Skip zip files
+            if any(file.lower().endswith(ext) for ext in extensions):
+                file_count += 1
+    return file_count
+
 # Recursively search for image files
 def search_image_files(directory):
     image_extensions = ['.tiff', '.tif', '.png', '.jpg']
+    total_files = count_files(directory, image_extensions)
+
+    # Create and display the message window
+    message_root = tk.Tk()
+    message_root.title("Processing")
+    message_label = tk.Label(message_root, text=f"Searching image files ({total_files} files)... please wait")
+    message_label.pack(padx=20, pady=20)
+    message_root.update()
+
     for root, dirs, files in os.walk(directory):
+        dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Exclude certain directories
         for file in files:
-            file_path = os.path.join(root, file)
-            if (
-                any(file.lower().endswith(ext) for ext in image_extensions) and
-                "_COMP_" not in file
-            ):
-                yield file_path
+            if file.lower().endswith('.zip'):
+                continue  # Skip zip files
+            if any(file.lower().endswith(ext) for ext in image_extensions) and "_COMP_" not in file:
+                yield os.path.join(root, file)
+
+    # Close the message window
+    message_root.destroy()
 
 # Recursively search for both .shp and .tif/.tiff files -- for Geospatial Files
 def search_geodata_files(start_dir):
+    geospatial_extensions = ['.shp', '.tif', '.tiff']
+    total_files = count_files(start_dir, geospatial_extensions)
+
+    # Create and display the message window
+    message_root = tk.Tk()
+    message_root.title("Processing")
+    message_label = tk.Label(message_root, text=f"Searching geospatial files ({total_files} files)... please wait")
+    message_label.pack(padx=20, pady=20)
+    message_root.update()
+
     shp_files = []
     geotiff_files = []
 
     for root, dirs, files in os.walk(start_dir):
+        dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Exclude certain directories
         for file in files:
-            if file.lower().endswith('.shp'):
-                shp_files.append(os.path.join(root, file))
-            elif file.lower().endswith('.tif') or file.lower().endswith('.tiff'):
-                geotiff_files.append(os.path.join(root, file))
+            if file.lower().endswith('.zip'):
+                continue  # Skip zip files
+            if any(file.lower().endswith(ext) for ext in geospatial_extensions):
+                if file.lower().endswith('.shp'):
+                    shp_files.append(os.path.join(root, file))
+                elif file.lower().endswith('.tif') or file.lower().endswith('.tiff'):
+                    geotiff_files.append(os.path.join(root, file))
+
+    # Close the message window
+    message_root.destroy()
 
     return shp_files, geotiff_files
-    
+
 # Recursively search for "other" files
 def search_other_files(directory, extensions):
+    total_files = count_files(directory, extensions)
+
+    # Create and display the message window
+    message_root = tk.Tk()
+    message_root.title("Processing")
+    message_label = tk.Label(message_root, text=f"Searching for other files ({total_files} files)... please wait")
+    message_label.pack(padx=20, pady=20)
+    message_root.update()
+
     for root, dirs, files in os.walk(directory):
+        dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Exclude certain directories
         for file in files:
+            if file.lower().endswith('.zip'):
+                continue  # Skip zip files
             if any(file.lower().endswith(ext) for ext in extensions):
                 yield os.path.join(root, file), file
+
+    # Close the message window
+    message_root.destroy()
 
 ##################
 ##################
@@ -226,9 +322,25 @@ class ImageMetadataExtractor(BaseMetadataExtractor):
                     'Bit_Depth': bit_depth,
                 }
                 return metadata
-        except PIL.Image.DecompressionBombError as e:
-            print(f"Image size too large {file_path}: {e}")
-            return None
+                pass
+        except PIL.Image.DecompressionBombError:
+            # If the image is too large, set a placeholder or maximum size
+            return {
+                'Name': os.path.splitext(os.path.basename(file_path))[0],
+                'Path': file_path,
+                'Title': '',  # Placeholder for manual entry
+                'Description': '',  # Placeholder for manual entry
+                'Keywords': '',  # Placeholder for manual entry
+                'File_Version': 'Too large to process',
+                'Size_MB': 'Too large to process',
+                'Dimensions': 'Maximum size exceeded',
+                'Resolution': 'Too large to process',
+                'Dimensions': 'Too large to process',
+                'Colour': 'Too large to process',
+                'Bit_Depth': 'Too large to process',
+                # Other necessary metadata fields
+            }
+
         except OSError as e:
             print(f"Error opening file {file_path}: {e}")
             return None
@@ -279,7 +391,8 @@ class OtherMetadataExtractor(BaseMetadataExtractor):
     
     def process_other_metadata(self, start_dir):  # Include 'start_dir' as a parameter
         root = ET.Element("Other_Files_Metadata")
-        for path, name in search_other_files(start_dir, ['.txt', '.pdf', '.csv', '.dwg', '.dxf']):
+        extensions = ['.txt', '.pdf', '.csv', '.dwg', '.dxf']
+        for path, name in search_other_files(start_dir, extensions):
             file_extension = os.path.splitext(name)[1]
             metadata = self.extract_metadata(path, file_extension)
             if metadata:
@@ -394,9 +507,15 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
                     'Scale': '',  # Placeholder for manual entry
                     'Associated_Files': ', '.join(associated_files),
                 }
+        except rasterio.errors.RasterioError as e:
+            # Handle rasterio-specific errors
+            print(f"Rasterio error with file {file_path}: {e}")
+            return None
+
         except Exception as e:
-            print(f"Error reading {file_path}: {e}")
-            return None    
+            # Handle other general exceptions
+            print(f"General error reading {file_path}: {e}")
+            return None   
 
     def process_geospatial_metadata(self, directory):
         shp_files, geotiff_files = self.search_geodata_files(directory)
@@ -434,6 +553,14 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
             print(f"The metadata XML file has been created at: {output_path}")
         else:
             print("No supported files found for XML creation.")
+
+def open_folder(path):
+    if sys.platform == "win32":
+        os.startfile(path)
+    else:
+        # Adjust the opener command for macOS or Linux if necessary
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.call([opener, path])
             
 ##################
 ##################
@@ -444,7 +571,7 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
 ##################
 
 if __name__ == "__main__":
-  # Get directory details and location for saving the XML
+    # Get directory details and location for saving the XML
     directory, save_directory = get_directory_info_via_gui()
     combined_root = ET.Element("CombinedMetadata")
 
@@ -481,11 +608,22 @@ if __name__ == "__main__":
     combined_tree = ET.ElementTree(combined_root)
     combined_xml_path = os.path.join(directory, 'METADATA.xml')
     combined_tree.write(combined_xml_path, encoding='utf-8', xml_declaration=True)
-    print(f"The metadata file has been created at: {combined_xml_path}")
 
-    # Create Folder Tree XML
+    # Write Folder Tree XML
     folder_tree_root = create_folder_tree_xml(directory)
     folder_tree = ET.ElementTree(folder_tree_root)
     folder_tree_xml_path = os.path.join(directory, 'METADATA_FolderTree.xml')
     folder_tree.write(folder_tree_xml_path, encoding='utf-8', xml_declaration=True)
-    print(f"Folder tree file has been created at: {folder_tree_xml_path}")
+
+    # Total folders processed (assuming you have a variable total_folders from create_folder_tree_xml)
+    total_folders = count_total_folders(directory)
+
+    # Display message box with folder count and file paths
+    message = f"Folder tree file has been created at: {folder_tree_xml_path}\n" \
+              f"Combined metadata file has been created at: {combined_xml_path}\n" \
+              f"Total folders scanned: {total_folders}"
+    response = mb.askyesno("Process Complete", message + "\n\nDo you want to open the folder?")
+
+    # Open the folder if the user clicks 'Yes'
+    if response:
+        open_folder(directory)
