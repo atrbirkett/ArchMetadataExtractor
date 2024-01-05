@@ -2,7 +2,7 @@ import os
 import tkinter as tk
 import PIL
 from PIL import Image, ImageFile
-from tkinter import filedialog, simpledialog, Label, Text, Entry, Tk, Button, Frame, Scrollbar, Canvas
+from tkinter import filedialog, simpledialog, Label, Text, Entry, Tk, Button, Frame, Scrollbar, Canvas, ttk
 from tkinter.simpledialog import askstring
 import tkinter.messagebox as mb
 import webbrowser
@@ -12,6 +12,9 @@ import geopandas as gpd
 from datetime import datetime
 import xml.etree.ElementTree as ET
 import sys 
+
+# Import the configuration file
+from config_file_types import IMAGE_FILE_TYPES, GEOSPATIAL_FILE_TYPES, OTHER_FILE_TYPES, GEOPHYSICS_FILE_TYPES, EXCLUDED_DIRECTORY_SUFFIXES, GEOPHYSICS_COMP_CONDITION
 
 ##################
 ##################
@@ -63,14 +66,14 @@ def get_project_metadata():
 
     root = tk.Tk()
     root.title("Project Metadata")
-    root.geometry("700x500")  # Set initial size
+    root.geometry("700x500")
 
-    main_frame = Frame(root)
+    main_frame = ttk.Frame(root)
     main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
     canvas = Canvas(main_frame)
-    scrollbar = Scrollbar(main_frame, orient="vertical", command=canvas.yview)
-    scrollable_frame = Frame(canvas)
+    scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+    scrollable_frame = ttk.Frame(canvas)
 
     scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
     canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
@@ -81,13 +84,13 @@ def get_project_metadata():
 
     entries = {}
     for field in fields:
-        Label(scrollable_frame, text=field).pack(anchor="w")
-        text_widget = Text(scrollable_frame, height=3, width=80)
+        tk.Label(scrollable_frame, text=field).pack(anchor="w")
+        text_widget = tk.Text(scrollable_frame, height=3, width=80)
         text_widget.pack(pady=5)
         text_widget.bind("<Tab>", focus_next_widget)
         entries[field] = text_widget
 
-    Button(root, text='OK', command=on_ok).pack(pady=10)
+    ttk.Button(root, text='OK', command=on_ok).pack(pady=10)
 
     root.mainloop()
     return project_metadata
@@ -111,8 +114,7 @@ def process_project_metadata():
 
 # Excludes Agisoft and ArcGIS files
 def is_excluded_dir(dir_name):
-    excluded_suffixes = [".files", ".gdb", ".Overviews"]
-    return any(dir_name.endswith(suffix) for suffix in excluded_suffixes)
+    return any(dir_name.endswith(suffix) for suffix in EXCLUDED_DIRECTORY_SUFFIXES)
 
 ##################
 ##################
@@ -129,7 +131,6 @@ def count_total_folders(folder_path):
         dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Apply exclusion
         folder_count += len(dirs)
     return folder_count
-
 
 # Function to get folder info and count
 def get_folder_size_and_file_count(folder_path):
@@ -207,8 +208,7 @@ def count_files(directory, extensions):
 
 # Recursively search for image files
 def search_image_files(directory):
-    image_extensions = ['.tiff', '.tif', '.png', '.jpg']
-    total_files = count_files(directory, image_extensions)
+    total_files = count_files(directory, IMAGE_FILE_TYPES)
 
     # Create and display the message window
     message_root = tk.Tk()
@@ -222,7 +222,7 @@ def search_image_files(directory):
         for file in files:
             if file.lower().endswith('.zip'):
                 continue  # Skip zip files
-            if any(file.lower().endswith(ext) for ext in image_extensions) and "_COMP_" not in file:
+            if any(file.lower().endswith(ext) for ext in IMAGE_FILE_TYPES) and GEOPHYSICS_COMP_CONDITION not in file:
                 yield os.path.join(root, file)
 
     # Close the message window
@@ -230,8 +230,7 @@ def search_image_files(directory):
 
 # Recursively search for both .shp and .tif/.tiff files -- for Geospatial Files
 def search_geodata_files(start_dir):
-    geospatial_extensions = ['.shp', '.tif', '.tiff']
-    total_files = count_files(start_dir, geospatial_extensions)
+    total_files = count_files(start_dir, GEOSPATIAL_FILE_TYPES)
 
     # Create and display the message window
     message_root = tk.Tk()
@@ -248,7 +247,7 @@ def search_geodata_files(start_dir):
         for file in files:
             if file.lower().endswith('.zip'):
                 continue  # Skip zip files
-            if any(file.lower().endswith(ext) for ext in geospatial_extensions):
+            if any(file.lower().endswith(ext) for ext in GEOSPATIAL_FILE_TYPES):
                 if file.lower().endswith('.shp'):
                     shp_files.append(os.path.join(root, file))
                 elif file.lower().endswith('.tif') or file.lower().endswith('.tiff'):
@@ -260,8 +259,8 @@ def search_geodata_files(start_dir):
     return shp_files, geotiff_files
 
 # Recursively search for "other" files
-def search_other_files(directory, extensions):
-    total_files = count_files(directory, extensions)
+def search_other_files(directory):
+    total_files = count_files(directory, OTHER_FILE_TYPES)
 
     # Create and display the message window
     message_root = tk.Tk()
@@ -275,8 +274,30 @@ def search_other_files(directory, extensions):
         for file in files:
             if file.lower().endswith('.zip'):
                 continue  # Skip zip files
-            if any(file.lower().endswith(ext) for ext in extensions):
+            if any(file.lower().endswith(ext) for ext in OTHER_FILE_TYPES):
                 yield os.path.join(root, file), file
+
+    # Close the message window
+    message_root.destroy()
+
+# Recursively search for geophysics files
+def search_geophysics_files(directory):
+    total_files = count_files(directory, GEOPHYSICS_FILE_TYPES)
+
+    # Create and display the message window
+    message_root = tk.Tk()
+    message_root.title("Processing")
+    message_label = tk.Label(message_root, text=f"Searching geophysics files ({total_files} files)... please wait")
+    message_label.pack(padx=20, pady=20)
+    message_root.update()
+
+    for root, dirs, files in os.walk(directory):
+        dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Exclude certain directories
+        for file in files:
+            if file.lower().endswith('.zip'):
+                continue  # Skip zip files
+            if any(file.lower().endswith(ext) for ext in GEOPHYSICS_FILE_TYPES) or GEOPHYSICS_COMP_CONDITION in file.upper():
+                yield os.path.join(root, file)
 
     # Close the message window
     message_root.destroy()
@@ -391,8 +412,7 @@ class OtherMetadataExtractor(BaseMetadataExtractor):
     
     def process_other_metadata(self, start_dir):  # Include 'start_dir' as a parameter
         root = ET.Element("Other_Files_Metadata")
-        extensions = ['.txt', '.pdf', '.csv', '.dwg', '.dxf']
-        for path, name in search_other_files(start_dir, extensions):
+        for path, name in search_other_files(start_dir):
             file_extension = os.path.splitext(name)[1]
             metadata = self.extract_metadata(path, file_extension)
             if metadata:
@@ -410,7 +430,7 @@ class GeophysicsMetadataExtractor(BaseMetadataExtractor):
         file_SizeMB = file_size_bytes / (1024 * 1024)  # Convert bytes to megabytes
 
         # Check if the file name contains "_COMP_" or the file extension is .xcp or .xgd
-        if "_COMP_" in file_name.upper() or file_name.lower().endswith(('.xcp', '.xgd')):
+        if GEOPHYSICS_COMP_CONDITION in file_name.upper() or file_name.lower().endswith(tuple(GEOPHYSICS_FILE_TYPES)):
             return {
                 'Path': file_path,
                 'Name': file_name,
@@ -438,6 +458,8 @@ class GeophysicsMetadataExtractor(BaseMetadataExtractor):
     
     def process_geophysics_metadata(self, start_dir):  # Add 'start_dir' as an argument
         root = ET.Element("Geophysics_Files")
+
+        geophysics_file_paths = search_geophysics_files(start_dir)
 
         for root_dir, _, files in os.walk(start_dir):
             for file in files:
@@ -561,6 +583,44 @@ def open_folder(path):
         # Adjust the opener command for macOS or Linux if necessary
         opener = "open" if sys.platform == "darwin" else "xdg-open"
         subprocess.call([opener, path])
+
+# Function to create a custom dialog
+def custom_message_box(parent, folder_tree_xml_path, combined_xml_path, total_folders):
+    # Create a Toplevel window
+    dialog = tk.Toplevel(parent)
+    dialog.title("Process Complete")
+    dialog.geometry("400x200")  # Adjust the size as needed
+
+    # Add a frame to the Toplevel window
+    frame = ttk.Frame(dialog)
+    frame.pack(expand=True, fill=tk.BOTH, padx=20, pady=20)
+
+    # Display the message
+    message = f"Folder tree and combined metadata file has been created in the specified directory\n" \
+              f"Total folders scanned: {total_folders}"
+    message_label = ttk.Label(frame, text=message, background='#f0f0f0', justify="left")
+    message_label.pack(pady=10, fill=tk.X)
+
+    # Function to handle 'Yes' button click
+    def on_yes():
+        open_folder(directory)
+        dialog.destroy()
+
+    # Function to handle 'No' button click
+    def on_no():
+        dialog.destroy()
+
+    # Add 'Yes' and 'No' buttons
+    yes_button = ttk.Button(frame, text="Yes", command=on_yes)
+    yes_button.pack(side=tk.LEFT, expand=True, pady=10, padx=(0, 10))
+
+    no_button = ttk.Button(frame, text="No", command=on_no)
+    no_button.pack(side=tk.RIGHT, expand=True, pady=10, padx=(10, 0))
+
+    # Wait for the user to close the dialog
+    dialog.transient(parent)  # Set to be on top of the main window
+    dialog.grab_set()  # Prevent interaction with the main window
+    parent.wait_window(dialog)
             
 ##################
 ##################
@@ -569,8 +629,40 @@ def open_folder(path):
 ######
 ##################
 ##################
+def open_folder(path):
+    # Function to open the folder, adjust based on your platform
+    if sys.platform == "win32":
+        os.startfile(path)
+    else:
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.call([opener, path])
+
+def show_completion_window(folder_tree_xml_path, combined_xml_path, total_folders, directory):
+    # Create a new window to show completion message
+    completion_window = tk.Tk()
+    completion_window.title("Process Complete")
+
+    # Message label
+    message = f"Folder tree and combined metadata file\n"\
+              f"has been created in the specified directory.\n" \
+              f"\n" \
+              f"Total folders scanned: {total_folders}"
+    ttk.Label(completion_window, text=message).pack(padx=20, pady=10)
+
+    # Button to open the folder
+    open_button = ttk.Button(completion_window, text="Open Directory", 
+                             command=lambda: open_folder(directory))
+    open_button.pack(side=tk.LEFT, padx=10, pady=10)
+
+    # Exit button
+    exit_button = ttk.Button(completion_window, text="Finish", command=completion_window.destroy)
+    exit_button.pack(side=tk.RIGHT, padx=10, pady=10)
+
+    # Run the window's main loop
+    completion_window.mainloop()
 
 if __name__ == "__main__":
+
     # Get directory details and location for saving the XML
     directory, save_directory = get_directory_info_via_gui()
     combined_root = ET.Element("CombinedMetadata")
@@ -618,12 +710,5 @@ if __name__ == "__main__":
     # Total folders processed (assuming you have a variable total_folders from create_folder_tree_xml)
     total_folders = count_total_folders(directory)
 
-    # Display message box with folder count and file paths
-    message = f"Folder tree file has been created at: {folder_tree_xml_path}\n" \
-              f"Combined metadata file has been created at: {combined_xml_path}\n" \
-              f"Total folders scanned: {total_folders}"
-    response = mb.askyesno("Process Complete", message + "\n\nDo you want to open the folder?")
-
-    # Open the folder if the user clicks 'Yes'
-    if response:
-        open_folder(directory)
+    # Call the custom completion window function
+    show_completion_window(folder_tree_xml_path, combined_xml_path, total_folders, directory)

@@ -11,7 +11,7 @@ def open_github():
 # Improved styling
 def set_style():
     style = ttk.Style()
-    style.theme_use('clam')  # Or try 'alt', 'default', 'classic', 'vista'
+    style.theme_use('default')  # Or try 'alt', 'default', 'classic', 'vista'
     style.configure('TButton', font=('Helvetica', 12), padding=6)
     style.configure('TLabel', font=('Helvetica', 12), background='#f0f0f0')
     style.configure('TFrame', background='#f0f0f0')
