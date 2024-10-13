@@ -302,6 +302,8 @@ def search_geophysics_files(directory):
     # Close the message window
     message_root.destroy()
 
+#temp for control points
+
 ##################
 ##################
 ######
@@ -330,36 +332,38 @@ class ImageMetadataExtractor(BaseMetadataExtractor):
                     bit_depth = None  # Undefined or varies for other modes
 
                 metadata = {
-                    'Name': os.path.splitext(file_name)[0],  # File name without extension
-                    'Path': file_path,
-                    'Title': '',  # Placeholder for manual entry
-                    'Description': '',  # Placeholder for manual entry
-                    'Keywords': '',  # Placeholder for manual entry
-                    'File_Version': img.format_version if hasattr(img, 'format_version') else '',
-                    'Size_MB': f"{file_SizeMB:.2f}MB",
-                    'Resolution': img.info.get('dpi', ())[0] if 'dpi' in img.info else '',
-                    'Dimensions': f"{img.width} x {img.height}px",
-                    'Colour': 'RGB' if img.mode == 'RGB' else 'grayscale' if img.mode == 'L' else img.mode,
-                    'Bit_Depth': bit_depth,
+                    'FILE_TITLE': os.path.splitext(file_name)[0],  # File name without extension
+                    'FILE_PATH': file_path,
+                    'FILE_DESCRIPTION': '',  # Placeholder for manual entry
+                    'FILE_COVERAGE': '',  # Placeholder for manual entry (coverage information)
+                    'FILE_PCS': '',  # Placeholder if PCS is applicable
+                    'FILE_GCS': '',  # Placeholder if GCS is applicable
+                    'FILE_KEYWORDS': '',  # Placeholder for manual entry
+                    'FILE_VERSION': img.format_version if hasattr(img, 'format_version') else '',
+                    'FILE_SIZE': f"{file_SizeMB:.2f}MB",
+                    'FILE_RESOLUTION': img.info.get('dpi', ())[0] if 'dpi' in img.info else '',
+                    'FILE_DIMENSIONS': f"{img.width} x {img.height}px",
+                    'FILE_COLOUR': 'RGB' if img.mode == 'RGB' else 'grayscale' if img.mode == 'L' else img.mode,
+                    'FILE_BITDEPTH': bit_depth,
                 }
                 return metadata
                 pass
         except PIL.Image.DecompressionBombError:
             # If the image is too large, set a placeholder or maximum size
             return {
-                'Name': os.path.splitext(os.path.basename(file_path))[0],
-                'Path': file_path,
-                'Title': '',  # Placeholder for manual entry
-                'Description': '',  # Placeholder for manual entry
-                'Keywords': '',  # Placeholder for manual entry
-                'File_Version': 'Too large to process',
-                'Size_MB': 'Too large to process',
-                'Dimensions': 'Maximum size exceeded',
-                'Resolution': 'Too large to process',
-                'Dimensions': 'Too large to process',
-                'Colour': 'Too large to process',
-                'Bit_Depth': 'Too large to process',
-                # Other necessary metadata fields
+                'FILE_TITLE': os.path.splitext(os.path.basename(file_path))[0],
+                'FILE_PATH': file_path,
+                'FILE_DESCRIPTION': '',  # Placeholder for manual entry
+                'FILE_COVERAGE': '',  # Placeholder for manual entry
+                'FILE_PCS': '',
+                'FILE_GCS': '',
+                'FILE_KEYWORDS': '',
+                'FILE_VERSION': 'Too large to process',
+                'FILE_SIZE': 'Too large to process',
+                'FILE_DIMENSIONS': 'Maximum size exceeded',
+                'FILE_RESOLUTION': 'Too large to process',
+                'FILE_COLOUR': 'Too large to process',
+                'FILE_BITDEPTH': 'Too large to process',
             }
 
         except OSError as e:
@@ -390,13 +394,23 @@ class OtherMetadataExtractor(BaseMetadataExtractor):
         file_SizeMB = file_stats.st_size / (1024 * 1024)
 
         common_metadata = {
-            'Path': file_path,
-            'Name': os.path.splitext(os.path.basename(file_path))[0],
-            'Extension': file_extension,
-            'Size_MB': f"{file_SizeMB:.2f}",
-            'Date_Created': creation_date,
-            'Date_Updated': modification_date,
-            # Add placeholders or additional common metadata fields
+            'FILE_NAME': os.path.splitext(os.path.basename(file_path))[0],
+            'FILE_PATH': file_path,
+            'FILE_EXTENSION': file_extension,
+            'FILE_SIZE': f"{file_SizeMB:.2f}",
+            'FILE_CREATED': creation_date,
+            'FILE_UPDATED': modification_date,
+            'FILE_SOFTWARE': '',  # Placeholder for manual entry
+            'FILE_HARDWARE': '',  # Placeholder for manual entry
+            'FILE_OPSYS': '',  # Placeholder for manual entry
+            'FILE_KEYWORDS': '',  # Placeholder for manual entry
+            'FILE_DATES': '',  # Placeholder for manual entry
+            'FILE_PROJECTID': '',  # Placeholder for manual entry
+            'FILE_LINKED': '',  # Placeholder for manual entry
+            'FILE_IDENTIFIER': '',  # Placeholder for manual entry
+            'FILE_COPYRIGHT': '',  # Placeholder for manual entry
+            'FILE_PCS': '',  # Placeholder for manual entry (if applicable)
+            'FILE_GCS': '',  # Placeholder for manual entry (if applicable)
         }
 
         if file_extension == '.csv' and "_G_" in os.path.basename(file_path):
@@ -432,25 +446,25 @@ class GeophysicsMetadataExtractor(BaseMetadataExtractor):
         # Check if the file name contains "_COMP_" or the file extension is .xcp or .xgd
         if GEOPHYSICS_COMP_CONDITION in file_name.upper() or file_name.lower().endswith(tuple(GEOPHYSICS_FILE_TYPES)):
             return {
-                'Path': file_path,
-                'Name': file_name,
-                'Description': '',  # Placeholder for manual entry 
-                'Instrument': '',  # Placeholder for manual entry' 
-                'Units': '',  # Placeholder for manual entry 
-                'Central_Coordinate':  '',  # Placeholder for manual entry  
-                'NW_Coordinate': '',  # Placeholder for manual entry  
-                'SE_Coordinate': '',  # Placeholder for manual entry  
-                'Comments': '',  # Placeholder for manual entry  
-                'Direction_of_1st_Traverse': '',  # Placeholder for manual entry  
-                'Collection_Method': '',  # Placeholder for manual entry  
-                'Sensors': '',  # Placeholder for manual entry  
-                'Dummy_Value': '',  # Placeholder for manual entry  
-                'Composite_Size': '',  # Placeholder for manual entry  
-                'Survey_Size': '',  # Placeholder for manual entry  
-                'Grid_Size': '',  # Placeholder for manual entry  
-                'X_Interval': '',  # Placeholder for manual entry  
-                'Y_Interval': '',  # Placeholder for manual entry  
-                'Size_MB': f"{file_SizeMB:.2f}MB",  # Include file size in MB
+                'FILE_PATH': file_path,
+                'FILE_NAME': file_name,
+                'FILE_DESCRIPTION': '',  # Placeholder for manual entry
+                'FILE_INSTRUMENT': '',  # Placeholder for manual entry
+                'FILE_UNITS': '',  # Placeholder for manual entry
+                'FILE_CENTRAL_COORDINATE': '',  # Placeholder for manual entry
+                'FILE_NW_COORDINATE': '',  # Placeholder for manual entry
+                'FILE_SE_COORDINATE': '',  # Placeholder for manual entry
+                'FILE_COMMENTS': '',  # Placeholder for manual entry
+                'FILE_1ST_TRAVERSE_DIRECTION': '',  # Placeholder for manual entry
+                'FILE_METHOD': '',  # Placeholder for manual entry
+                'FILE_SENSORS': '',  # Placeholder for manual entry
+                'FILE_DUMMY_VALUE': '',  # Placeholder for manual entry
+                'FILE_COMPOSITE_SIZE': '',  # Placeholder for manual entry
+                'FILE_SURVEY_SIZE': '',  # Placeholder for manual entry
+                'FILE_GRID_SIZE': '',  # Placeholder for manual entry
+                'FILE_X_INTERVAL': '',  # Placeholder for manual entry
+                'FILE_Y_INTERVAL': '',  # Placeholder for manual entry
+                'FILE_SIZE': f"{file_SizeMB:.2f}MB",  # Include file size in MB
             }
 
         # Default metadata for non-compressed files
@@ -484,19 +498,20 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
                     file_SizeMB = file_size_bytes / 1048576  # Convert bytes to megabytes
                     
                     return {
-                        'Path': file_path,                    
-                        'Name': os.path.splitext(os.path.basename(file_path))[0],
-                        'Location': os.path.dirname(file_path),
-                        'Extension': os.path.splitext(file_path)[1],
-                        'Description': tags.get('Description', 'Unknown'),
-                        'Keywords': tags.get('Keywords', 'Unknown'),
-                        'Version': tags.get('Version', src.driver),
-                        'Size_MB': str(file_SizeMB),  # Store file size in MB
-                        'Bands': str(src.count),
-                        'Cell_Size': str(src.res),
-                        'Coverage': str(src.bounds),
-                        'PCS': src.crs.to_string() if src.crs else 'Unknown',
-                        'GCS': src.crs.to_epsg() if src.crs else 'Unknown',
+                        'FILE_TITLE': tags.get('Title', 'Unknown'),  # Adding FILE_TITLE
+                        'FILE_NAME': os.path.splitext(os.path.basename(file_path))[0],
+                        'FILE_PATH': file_path,
+                        'FILE_EXTENSION': os.path.splitext(file_path)[1],
+                        'FILE_DESCRIPTION': tags.get('Description', 'Unknown'),
+                        'FILE_KEYWORDS': tags.get('Keywords', 'Unknown'),  # Adding FILE_KEYWORDS
+                        'FILE_VERSION': tags.get('Version', src.driver),
+                        'FILE_SIZE': f"{file_SizeMB:.2f}MB",  # Store file size in MB
+                        'FILE_BANDS': str(src.count),
+                        'FILE_CELL_SIZE': str(src.res),
+                        'FILE_COVERAGE': str(src.bounds),
+                        'FILE_PCS': src.crs.to_string() if src.crs else 'Unknown',
+                        'FILE_GCS': src.crs.to_epsg() if src.crs else 'Unknown',
+                        'FILE_ASSOCIATED': ', '.join(associated_files),
                     }
             elif file_extension.lower() == '.shp':
                 # For shapefiles
@@ -513,21 +528,21 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
                 data_description = "No Description"
                
                 return {
-                    'Project_ID': '',  # Placeholder for manual entry
-                    'Name': file_name_without_extension,
-                    'Path': os.path.dirname(file_path),
-                    'Extension': file_extension,
-                    'Size_MB': file_SizeMB,  # File size in MB
-                    'Description': data_description,
-                    'TYPE': geometry_type,
-                    'Feature_Count': str(feature_count),
-                    'Method': '',  # Placeholder for manual entry
-                    'Dates': file_creation_date,
-                    'Coverage': '',  # Placeholder for manual entry
-                    'PCS': pcs,
-                    'GCS': gcs,
-                    'Scale': '',  # Placeholder for manual entry
-                    'Associated_Files': ', '.join(associated_files),
+                    'FILE_PROJECTID': '',  # Placeholder for manual entry
+                    'FILE_NAME': file_name_without_extension,
+                    'FILE_PATH': os.path.dirname(file_path),
+                    'FILE_EXTENSION': file_extension,
+                    'FILE_SIZE': file_SizeMB,  # File size in MB
+                    'FILE_DESCRIPTION': data_description,
+                    'FILE_GEOMTYPE': geometry_type,
+                    'FILE_FEATURE_COUNT': str(feature_count),
+                    'FILE_METHOD': '',  # Placeholder for manual entry
+                    'FILE_DATES': file_creation_date,
+                    'FILE_COVERAGE': '',  # Placeholder for manual entry
+                    'FILE_PCS': pcs,
+                    'FILE_GCS': gcs,
+                    'FILE_SCALE': '',  # Placeholder for manual entry
+                    'FILE_ASSOCIATED': ', '.join(associated_files),
                 }
         except rasterio.errors.RasterioError as e:
             # Handle rasterio-specific errors

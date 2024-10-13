@@ -1,0 +1,49 @@
+FolderLevelMetadataExtractor
+
+import os
+import xml.etree.ElementTree as ET
+
+class FolderLevelMetadataExtractor:
+    def extract_folder_metadata(self, folder_path):
+        """
+        Extract metadata for the folder at the folder level (not individual files).
+        """
+        metadata = {}
+        folder_name = os.path.basename(folder_path)
+
+        # Process folder-level metadata
+        metadata.update({
+            'FILE_SUBJECT': '',  # Placeholder for folder-level subject keywords
+            'FILE_ACCURACY': '',  # Placeholder for intended accuracy at folder level
+            'FILE_COVERAGE': '',  # Placeholder for coverage of the folder contents
+            'FILE_PCS': '',  # Placeholder for Projected Coordinate System (PCS)
+            'PROJECT_RELATIONS': '',  # Placeholder for folder-level relations (source references)
+            'PROJECT_LANGUAGE': 'English',  # Default to English
+            'PROJECT_TYPE': '',  # Placeholder for resource type (primary data, processed data)
+            'PROJECT_FORMAT': '',  # Placeholder for format (e.g., AutoCAD, 3D Model)
+        })
+
+        return metadata
+
+    def process_folder_metadata(self, start_dir):
+        """
+        Process only the "3D_Recording" folder and its subfolders, generating folder-level metadata.
+        """
+        root = ET.Element("Folder_Level_Metadata")
+
+        # Look for "3D_Recording" folder and process its subfolders
+        for root_dir, dirs, _ in os.walk(start_dir):
+            # Check if the current folder is "3D_Recording"
+            if "3D_Recording" in os.path.basename(root_dir):
+                for subfolder in dirs:
+                    # Skip .zip folders
+                    if not subfolder.endswith('.zip'):
+                        folder_path = os.path.join(root_dir, subfolder)
+                        metadata = self.extract_folder_metadata(folder_path)
+                        
+                        # Create XML entry for the folder
+                        folder_element = ET.SubElement(root, "Folder")
+                        for key, value in metadata.items():
+                            ET.SubElement(folder_element, key).text = str(value)
+
+        return root

@@ -1,0 +1,57 @@
+ControlPointMetadataExtractor
+
+class ControlPointMetadataExtractor(BaseMetadataExtractor):
+    def extract_metadata(self, file_path):
+        metadata = {}
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        file_directory = os.path.dirname(file_path)
+
+        # Look for associated files (e.g., .xml, .shx, .dbf, etc.)
+        associated_files = [f for f in os.listdir(file_directory) if f.startswith(file_name)]
+        linked_files = ', '.join(associated_files)
+
+        # Process the main control point data (coordinates, etc.)
+        if file_path.endswith(".shp"):
+            # Example extraction from shapefile (using libraries like geopandas)
+            gdf = gpd.read_file(file_path)
+            # Assuming we extract the first point for simplicity, handle iteration for multiple
+            first_point = gdf.geometry.iloc[0]
+            metadata['CONTL_X'] = first_point.x
+            metadata['CONTL_Y'] = first_point.y
+            metadata['CONTL_Z'] = first_point.z if hasattr(first_point, 'z') else ''
+
+        elif file_path.endswith(".csv"):
+            # Example CSV extraction for control points (assuming columns for X, Y, Z)
+            with open(file_path, 'r') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    metadata['CONTL_X'] = row.get('X')
+                    metadata['CONTL_Y'] = row.get('Y')
+                    metadata['CONTL_Z'] = row.get('Z', '')  # Handle missing Z
+
+        # Add other metadata fields
+        metadata.update({
+            'CONTL_CX': '',  # Placeholder for Covariance X (from .dbf if available)
+            'CONTL_CY': '',  # Placeholder for Covariance Y
+            'CONTL_CZ': '',  # Placeholder for Covariance Z
+            'CONTL_Location': '',  # Placeholder for textual description of location
+            'FILE_DATES': '',  # Placeholder for dates (if present in attributes)
+            'FILE_PROJECTID': '',  # Placeholder for project ID or reference code
+            'FILE_COVERAGE': '',  # Placeholder for site location or coverage
+            'FILE_PCS': '',  # Placeholder for Projected Coordinate System (from .prj file)
+            'FILE_GCS': '',  # Placeholder for Geographic Coordinate System (from .prj file)
+            'FILE_LINKED': linked_files  # Add the associated files as a comma-separated list
+        })
+
+        return metadata
+
+    def process_control_point_metadata(self, start_dir):
+        root = ET.Element("Three_Dimensional_Control_Point_Metadata")
+        for file_path in search_control_point_files(start_dir):  # Function to search relevant files
+            metadata = self.extract_metadata(file_path)
+            if metadata:
+                file_element = ET.SubElement(root, "File")
+                for key, value in metadata.items():
+                    ET.SubElement(file_element, key).text = str(value)
+
+        return root

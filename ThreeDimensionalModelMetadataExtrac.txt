@@ -1,0 +1,64 @@
+ThreeDimensionalModelMetadataExtractor
+class ThreeDimensionalModelMetadataExtractor:
+    def extract_metadata(self, file_path):
+        """
+        Extract metadata for Three-Dimensional Model Files (e.g., .obj, .stl, .pts).
+        """
+        metadata = {}
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        file_extension = os.path.splitext(file_path)[1]
+        file_directory = os.path.dirname(file_path)
+        file_size = os.path.getsize(file_path) / (1024 * 1024)  # Convert to MB
+
+        # Look for associated files (e.g., .xml, .mtl, etc.)
+        associated_files = [f for f in os.listdir(file_directory) if f.startswith(file_name)]
+        linked_files = ', '.join(associated_files)
+
+        # Populate model-specific metadata, including additional fields
+        metadata.update({
+            'FILE_TITLE': '',  # Placeholder for the title of the file or caption
+            'FILE_NAME': file_name,  # File name without extension
+            'FILE_PATH': file_path,  # Full path to the file
+            'FILE_EXTENSION': file_extension,  # File format extension
+            'FILE_SIZE': f"{file_size:.2f} MB",  # File size in MB
+            'FILE_DESCRIPTION': '',  # Placeholder for a description of the raster data
+            'FILE_KEYWORDS': '',  # Placeholder for keywords (e.g., period, site, or feature terms)
+            'FILE_VERSION': '',  # Placeholder for the version or driver (e.g., TIFF 6.0)
+
+            # Existing metadata fields for 3D model files
+            'FILE_VERT': '',  # Placeholder for number of vertices (to be extracted from the model)
+            'FILE_POLY': '',  # Placeholder for number of polygons (to be extracted from the model)
+            'FILE_GEOMTYPE': '',  # Placeholder for geometry type (e.g., wireframe, parametric)
+            'FILE_UNITSCALE': '',  # Placeholder for scale represented by 1 unit
+            'FILE_COVERAGE': '',  # Placeholder for site location or description
+            'FILE_PCS': '',  # Placeholder for Projected Coordinate System
+            'FILE_LAYERS': '',  # Placeholder for number of layers (if applicable)
+            'FILE_TEXTURES': '',  # Placeholder for colour or texture information
+            'FILE_MATERIAL': '',  # Placeholder for material properties
+            'FILE_LIGHT': '',  # Placeholder for light source information
+            'FILE_GCS': '',  # Placeholder for Geographic Coordinate System
+            'FILE_TYPE': '',  # Placeholder for master or derived model
+            'FILE_LOD': '',  # Placeholder for level of detail or resolution
+            'FILE_LINKED': linked_files  # Add the associated files as a comma-separated list
+        })
+
+        return metadata
+
+    def process_model_metadata(self, start_dir):
+        """
+        Process all 3D model files within the directory and generate metadata for each.
+        """
+        root = ET.Element("Three_Dimensional_Model_File_Metadata")
+
+        # Search through all directories for files matching the 3D file types
+        for root_dir, _, files in os.walk(start_dir):
+            for file in files:
+                file_path = os.path.join(root_dir, file)
+                if any(file_path.endswith(ext) for ext in THREED_FILE_TYPES):
+                    metadata = self.extract_metadata(file_path)
+                    if metadata:
+                        file_element = ET.SubElement(root, "File")
+                        for key, value in metadata.items():
+                            ET.SubElement(file_element, key).text = str(value)
+
+        return root
