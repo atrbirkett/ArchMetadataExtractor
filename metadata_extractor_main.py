@@ -12,9 +12,12 @@ import geopandas as gpd
 from datetime import datetime
 import xml.etree.ElementTree as ET
 import sys 
+import csv
+import re
+import warnings
 
 # Import the configuration file
-from config_file_types import IMAGE_FILE_TYPES, GEOSPATIAL_FILE_TYPES, OTHER_FILE_TYPES, GEOPHYSICS_FILE_TYPES, EXCLUDED_DIRECTORY_SUFFIXES, GEOPHYSICS_COMP_CONDITION
+from config_file_types import IMAGE_FILE_TYPES, GEOSPATIAL_FILE_TYPES, OTHER_FILE_TYPES, GEOPHYSICS_FILE_TYPES, EXCLUDED_DIRECTORY_SUFFIXES, GEOPHYSICS_COMP_CONDITION, THREED_FILE_TYPES
 
 ##################
 ##################
@@ -245,18 +248,53 @@ def search_geodata_files(start_dir):
     for root, dirs, files in os.walk(start_dir):
         dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Exclude certain directories
         for file in files:
+            # Define the full file path
+            file_path = os.path.join(root, file)
             if file.lower().endswith('.zip'):
                 continue  # Skip zip files
             if any(file.lower().endswith(ext) for ext in GEOSPATIAL_FILE_TYPES):
                 if file.lower().endswith('.shp'):
-                    shp_files.append(os.path.join(root, file))
+                    shp_files.append(file_path)
+                    # Extract metadata for shapefiles
+                    geospatial_metadata = GeospatialMetadataExtractor(file_path)
+                    combined_root.append(geospatial_metadata)
                 elif file.lower().endswith('.tif') or file.lower().endswith('.tiff'):
-                    geotiff_files.append(os.path.join(root, file))
+                    geotiff_files.append(file_path)
+                    # Extract metadata for GeoTIFF files
+                    geospatial_metadata = GeospatialMetadataExtractor(file_path)
+                    combined_root.append(geospatial_metadata)
 
     # Close the message window
     message_root.destroy()
 
     return shp_files, geotiff_files
+
+# New function to search for control point files
+def search_control_point_files(directory):
+    control_point_files = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            # Define the full file path
+            file_path = os.path.join(root, file)
+            if file.lower().endswith(('.shp', '.csv')) and ('_GCP' in file or '_CameraPositions' in file):
+                control_point_files.append(file_path)
+                # Extract metadata for Control Point files
+                control_point_metadata = ControlPointMetadataExtractor(file_path)
+                combined_root.append(control_point_metadata)
+    return control_point_files
+
+# New function to search for 3D model files
+def search_model_files(directory):
+    model_files = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            # Define the full file path
+            file_path = os.path.join(root, file)
+            if file.lower().endswith(tuple(THREED_FILE_TYPES)):  # Assuming THREED_FILE_TYPES is defined
+                # Extract metadata for 3D model files
+                model_metadata = ThreeDimensionalModelMetadataExtractor(file_path)
+                combined_root.append(model_metadata)
+    return model_files
 
 # Recursively search for "other" files
 def search_other_files(directory):
@@ -302,7 +340,34 @@ def search_geophysics_files(directory):
     # Close the message window
     message_root.destroy()
 
-#temp for control points
+def find_similar_files(directory):
+    similar_files = {}
+    pattern = re.compile(r'^(.*_)[^_]+_\d{2}(_\d{3})?\.JPG$', re.IGNORECASE)
+
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            match = pattern.match(file)
+            if match:
+                base_name = match.group(1)
+                if base_name not in similar_files:
+                    similar_files[base_name] = []
+                similar_files[base_name].append(os.path.join(root, file))
+
+    return similar_files
+
+def prompt_for_metadata(base_name):
+    metadata = {}
+    print(f"Entering metadata for files starting with '{base_name}':")
+    metadata['Description'] = input("Enter the description for similar files: ")
+    metadata['Keywords'] = input("Enter keywords for similar files (comma-separated): ")
+    return metadata
+
+def assign_metadata_to_similar_files(similar_files):
+    for base_name, files in similar_files.items():
+        metadata = prompt_for_metadata(base_name)
+        for file in files:
+            print(f"Assigning metadata to: {file}")
+            # Here, implement the logic to save the metadata to each file
 
 ##################
 ##################
@@ -486,9 +551,9 @@ class GeophysicsMetadataExtractor(BaseMetadataExtractor):
 
         return root
 
-## Geospatial Files: Geirefrenced TIFF files and Shapefiles (including listing related files for Shapefiles).
 class GeospatialMetadataExtractor(BaseMetadataExtractor):
     def extract_metadata(self, file_path, file_extension):
+        associated_files = []  # Initialize the list for associated files
         try:
             if file_extension.lower() in ['.tif', '.tiff']:
                 # For GeoTIFF files
@@ -496,7 +561,10 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
                     tags = src.tags()
                     file_size_bytes = os.path.getsize(file_path)
                     file_SizeMB = file_size_bytes / 1048576  # Convert bytes to megabytes
-                    
+
+                    # Get associated files based on the raster file name
+                    associated_files = self.get_associated_files(file_path)
+
                     return {
                         'FILE_TITLE': tags.get('Title', 'Unknown'),  # Adding FILE_TITLE
                         'FILE_NAME': os.path.splitext(os.path.basename(file_path))[0],
@@ -511,7 +579,7 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
                         'FILE_COVERAGE': str(src.bounds),
                         'FILE_PCS': src.crs.to_string() if src.crs else 'Unknown',
                         'FILE_GCS': src.crs.to_epsg() if src.crs else 'Unknown',
-                        'FILE_ASSOCIATED': ', '.join(associated_files),
+                        'FILE_ASSOCIATED': ', '.join(associated_files),  # Include associated files
                     }
             elif file_extension.lower() == '.shp':
                 # For shapefiles
@@ -524,16 +592,17 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
                 file_name_without_extension, _ = os.path.splitext(os.path.basename(file_path))
                 file_size_bytes = os.path.getsize(file_path)
                 file_SizeMB = file_size_bytes / 1024 / 1024  # Convert bytes to MB
+                
+                # Get associated files for shapefile
                 associated_files = [f for f in os.listdir(os.path.dirname(file_path)) if f.startswith(file_name_without_extension)]
-                data_description = "No Description"
-               
+
                 return {
                     'FILE_PROJECTID': '',  # Placeholder for manual entry
                     'FILE_NAME': file_name_without_extension,
                     'FILE_PATH': os.path.dirname(file_path),
                     'FILE_EXTENSION': file_extension,
                     'FILE_SIZE': file_SizeMB,  # File size in MB
-                    'FILE_DESCRIPTION': data_description,
+                    'FILE_DESCRIPTION': "No Description",  # Placeholder for manual entry
                     'FILE_GEOMTYPE': geometry_type,
                     'FILE_FEATURE_COUNT': str(feature_count),
                     'FILE_METHOD': '',  # Placeholder for manual entry
@@ -542,7 +611,7 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
                     'FILE_PCS': pcs,
                     'FILE_GCS': gcs,
                     'FILE_SCALE': '',  # Placeholder for manual entry
-                    'FILE_ASSOCIATED': ', '.join(associated_files),
+                    'FILE_ASSOCIATED': ', '.join(associated_files),  # Include associated files
                 }
         except rasterio.errors.RasterioError as e:
             # Handle rasterio-specific errors
@@ -564,6 +633,16 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
                 geospatial_metadata_records.append(metadata)
 
         return self.create_Geospatial_metadata(geospatial_metadata_records, "output_path.xml", "Geospatial_Files")
+
+    @staticmethod
+    def get_associated_files(file_path):
+        """Get associated files based on the main raster file's name."""
+        file_name_without_extension = os.path.splitext(os.path.basename(file_path))[0]
+        folder_path = os.path.dirname(file_path)
+        # Define the extensions for associated files
+        associated_extensions = ['.tfw', '.prj', '.kml', '.shp', '.shx', '.dbf']
+        associated_files = [f for f in os.listdir(folder_path) if f.startswith(file_name_without_extension) and f.endswith(tuple(associated_extensions))]
+        return associated_files
 
     @staticmethod
     def search_geodata_files(directory):
@@ -590,6 +669,150 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
             print(f"The metadata XML file has been created at: {output_path}")
         else:
             print("No supported files found for XML creation.")
+
+# New Folder Level Metadata Extractor
+class FolderLevelMetadataExtractor(BaseMetadataExtractor):
+    def extract_folder_metadata(self, folder_path):
+        """
+        Extract metadata for the folder at the folder level (not individual files).
+        """
+        metadata = {}
+        folder_name = os.path.basename(folder_path)
+
+        # Process folder-level metadata
+        metadata.update({
+            'FILE_SUBJECT': '',  # Placeholder for folder-level subject keywords
+            'FILE_ACCURACY': '',  # Placeholder for intended accuracy at folder level
+            'FILE_COVERAGE': '',  # Placeholder for coverage of the folder contents
+            'FILE_PCS': '',  # Placeholder for Projected Coordinate System (PCS)
+            'PROJECT_RELATIONS': '',  # Placeholder for folder-level relations (source references)
+            'PROJECT_LANGUAGE': 'English',  # Default to English
+            'PROJECT_TYPE': '',  # Placeholder for resource type (primary data, processed data)
+            'PROJECT_FORMAT': '',  # Placeholder for format (e.g., AutoCAD, 3D Model)
+        })
+
+        return metadata
+
+    def process_folder_metadata(self, start_dir):
+        """
+        Process only the "3D_Recording" folder and its subfolders, generating folder-level metadata.
+        """
+        root = ET.Element("Folder_Level_Metadata")
+
+        # Look for "3D_Recording" folder and process its subfolders
+        for root_dir, dirs, _ in os.walk(start_dir):
+            # Check if the current folder is "3D_Recording"
+            if "3D_Recording" in os.path.basename(root_dir):
+                for subfolder in dirs:
+                    # Skip .zip folders
+                    if not subfolder.endswith('.zip'):
+                        folder_path = os.path.join(root_dir, subfolder)
+                        metadata = self.extract_folder_metadata(folder_path)
+                        
+                        # Create XML entry for the folder
+                        folder_element = ET.SubElement(root, "Folder")
+                        for key, value in metadata.items():
+                            ET.SubElement(folder_element, key).text = str(value)
+
+        return root
+
+# New Control Point Metadata Extractor
+class ControlPointMetadataExtractor(BaseMetadataExtractor):
+    def extract_metadata(self, file_path):
+        metadata = {}
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        file_directory = os.path.dirname(file_path)
+
+        # Look for associated files (e.g., .xml, .shx, .dbf, etc.)
+        associated_files = [f for f in os.listdir(file_directory) if f.startswith(file_name)]
+        linked_files = ', '.join(associated_files)
+
+        # Process the main control point data (coordinates, etc.)
+        if file_path.endswith(".shp"):
+            # Example extraction from shapefile (using libraries like geopandas)
+            gdf = gpd.read_file(file_path)
+            # Assuming we extract the first point for simplicity, handle iteration for multiple
+            first_point = gdf.geometry.iloc[0]
+            metadata['CONTL_X'] = first_point.x
+            metadata['CONTL_Y'] = first_point.y
+            metadata['CONTL_Z'] = first_point.z if hasattr(first_point, 'z') else ''
+
+        elif file_path.endswith(".csv"):
+            # Example CSV extraction for control points (assuming columns for X, Y, Z)
+            with open(file_path, 'r') as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    metadata['CONTL_X'] = row.get('X')
+                    metadata['CONTL_Y'] = row.get('Y')
+                    metadata['CONTL_Z'] = row.get('Z', '')  # Handle missing Z
+
+        # Add other metadata fields
+        metadata.update({
+            'CONTL_CX': '',  # Placeholder for Covariance X (from .dbf if available)
+            'CONTL_CY': '',  # Placeholder for Covariance Y
+            'CONTL_CZ': '',  # Placeholder for Covariance Z
+            'CONTL_Location': '',  # Placeholder for textual description of location
+            'FILE_DATES': '',  # Placeholder for dates (if present in attributes)
+            'FILE_PROJECTID': '',  # Placeholder for project ID or reference code
+            'FILE_COVERAGE': '',  # Placeholder for site location or coverage
+            'FILE_PCS': '',  # Placeholder for Projected Coordinate System (from .prj file)
+            'FILE_GCS': '',  # Placeholder for Geographic Coordinate System (from .prj file)
+            'FILE_LINKED': linked_files  # Add the associated files as a comma-separated list
+        })
+
+        return metadata
+
+    def process_control_point_metadata(self, start_dir):
+        root = ET.Element("Three_Dimensional_Control_Point_Metadata")
+        for file_path in search_control_point_files(start_dir):  # Function to search relevant files
+            metadata = self.extract_metadata(file_path)
+            if metadata:
+                file_element = ET.SubElement(root, "File")
+                for key, value in metadata.items():
+                    ET.SubElement(file_element, key).text = str(value)
+
+        return root
+
+# New Three-Dimensional Model Metadata Extractor
+class ThreeDimensionalModelMetadataExtractor(BaseMetadataExtractor):
+    def extract_metadata(self, file_path):
+        metadata = {}
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        file_directory = os.path.dirname(file_path)
+        file_size = os.path.getsize(file_path) / (1024 * 1024)  # Convert to MB
+
+        metadata.update({
+            'FILE_NAME': file_name,
+            'FILE_PATH': file_directory,
+            'FILE_EXTENSION': os.path.splitext(file_path)[1],
+            'FILE_SIZE': f"{file_size:.2f}MB",
+            'FILE_VERT': '',  # Number of vertices (to be extracted from model if available)
+            'FILE_POLY': '',  # Number of polygons
+            'FILE_GEOMTYPE': '',  # Geometry type
+            'FILE_UNITSCALE': '',  # Scale in units
+            'FILE_COVERAGE': '',  # Coverage information
+            'FILE_PCS': '',  # Projected Coordinate System (if available)
+            'FILE_GCS': '',  # Geographic Coordinate System (if available)
+            'FILE_LAYERS': '',  # Number of layers if applicable
+            'FILE_TEXTURES': '',  # Texture info if available
+            'FILE_MATERIAL': '',  # Material info if available
+            'FILE_LIGHT': '',  # Light source information
+            'FILE_TYPE': '',  # Basic, technical, or extended file type
+            'FILE_LOD': '',  # Level of detail
+        })
+
+        return metadata
+
+    def process_model_metadata(self, start_dir):
+        root = ET.Element("Three_Dimensional_Model_Metadata")
+        for file_path in search_model_files(start_dir):  # Function to search relevant files
+            metadata = self.extract_metadata(file_path)
+            if metadata:
+                file_element = ET.SubElement(root, "File")
+                for key, value in metadata.items():
+                    ET.SubElement(file_element, key).text = str(value)
+
+        return root
 
 def open_folder(path):
     if sys.platform == "win32":
@@ -710,6 +933,15 @@ if __name__ == "__main__":
     geophysics_metadata = geophysics_extractor.process_geophysics_metadata(directory)  # Pass 'directory' as an argument
     if geophysics_metadata is not None:
         combined_root.append(geophysics_metadata)
+
+    # New call to find similar files and assign metadata
+    similar_files = find_similar_files(directory)
+
+    if similar_files:
+        print(f"Found similar files: {similar_files}")
+        assign_metadata_to_similar_files(similar_files)
+    else:
+        print("No similar files found.")
 
     # Write Combined Metadata XML
     combined_tree = ET.ElementTree(combined_root)

@@ -17,7 +17,7 @@ GEOPHYSICS_FILE_TYPES = ['.xcp', '.xgd', '.xyz']
 CAD_FILE_TYPES = ['.dwg', '.dxf']
 
 # 3D file types
-THREED_FILE_TYPES = ['.obj', '.mtl', '.x3d', '.stl', ".pts"]
+THREED_FILE_TYPES = ['.obj', '.mtl', '.x3d', '.stl', '.pts']
 
 # Laser Scanning file types
 LASER_FILE_TYPES = []
