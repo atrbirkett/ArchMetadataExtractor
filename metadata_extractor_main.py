@@ -248,21 +248,13 @@ def search_geodata_files(start_dir):
     for root, dirs, files in os.walk(start_dir):
         dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Exclude certain directories
         for file in files:
-            # Define the full file path
-            file_path = os.path.join(root, file)
             if file.lower().endswith('.zip'):
                 continue  # Skip zip files
             if any(file.lower().endswith(ext) for ext in GEOSPATIAL_FILE_TYPES):
                 if file.lower().endswith('.shp'):
-                    shp_files.append(file_path)
-                    # Extract metadata for shapefiles
-                    geospatial_metadata = GeospatialMetadataExtractor(file_path)
-                    combined_root.append(geospatial_metadata)
+                    shp_files.append(os.path.join(root, file))
                 elif file.lower().endswith('.tif') or file.lower().endswith('.tiff'):
-                    geotiff_files.append(file_path)
-                    # Extract metadata for GeoTIFF files
-                    geospatial_metadata = GeospatialMetadataExtractor(file_path)
-                    combined_root.append(geospatial_metadata)
+                    geotiff_files.append(os.path.join(root, file))
 
     # Close the message window
     message_root.destroy()
@@ -274,13 +266,8 @@ def search_control_point_files(directory):
     control_point_files = []
     for root, dirs, files in os.walk(directory):
         for file in files:
-            # Define the full file path
-            file_path = os.path.join(root, file)
             if file.lower().endswith(('.shp', '.csv')) and ('_GCP' in file or '_CameraPositions' in file):
-                control_point_files.append(file_path)
-                # Extract metadata for Control Point files
-                control_point_metadata = ControlPointMetadataExtractor(file_path)
-                combined_root.append(control_point_metadata)
+                control_point_files.append(os.path.join(root, file))
     return control_point_files
 
 # New function to search for 3D model files
@@ -288,12 +275,8 @@ def search_model_files(directory):
     model_files = []
     for root, dirs, files in os.walk(directory):
         for file in files:
-            # Define the full file path
-            file_path = os.path.join(root, file)
             if file.lower().endswith(tuple(THREED_FILE_TYPES)):  # Assuming THREED_FILE_TYPES is defined
-                # Extract metadata for 3D model files
-                model_metadata = ThreeDimensionalModelMetadataExtractor(file_path)
-                combined_root.append(model_metadata)
+                model_files.append(os.path.join(root, file))
     return model_files
 
 # Recursively search for "other" files
@@ -928,7 +911,20 @@ if __name__ == "__main__":
     if other_metadata is not None:
         combined_root.append(other_metadata)
 
+    # Process 3D Model Metadata
+    model_extractor = ThreeDimensionalModelMetadataExtractor()
+    model_metadata = model_extractor.process_model_metadata(directory)
+    if model_metadata is not None:
+        combined_root.append(model_metadata)
+
+    # Process Control Point Metadata
+    control_point_extractor = ControlPointMetadataExtractor()
+    control_point_metadata = control_point_extractor.process_control_point_metadata(directory)
+    if control_point_metadata is not None:
+        combined_root.append(control_point_metadata)
+
     # Process Geophysics Metadata
+    
     geophysics_extractor = GeophysicsMetadataExtractor()
     geophysics_metadata = geophysics_extractor.process_geophysics_metadata(directory)  # Pass 'directory' as an argument
     if geophysics_metadata is not None:
