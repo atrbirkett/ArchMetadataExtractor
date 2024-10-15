@@ -323,35 +323,6 @@ def search_geophysics_files(directory):
     # Close the message window
     message_root.destroy()
 
-def find_similar_files(directory):
-    similar_files = {}
-    pattern = re.compile(r'^(.*_)[^_]+_\d{2}(_\d{3})?\.JPG$', re.IGNORECASE)
-
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            match = pattern.match(file)
-            if match:
-                base_name = match.group(1)
-                if base_name not in similar_files:
-                    similar_files[base_name] = []
-                similar_files[base_name].append(os.path.join(root, file))
-
-    return similar_files
-
-def prompt_for_metadata(base_name):
-    metadata = {}
-    print(f"Entering metadata for files starting with '{base_name}':")
-    metadata['Description'] = input("Enter the description for similar files: ")
-    metadata['Keywords'] = input("Enter keywords for similar files (comma-separated): ")
-    return metadata
-
-def assign_metadata_to_similar_files(similar_files):
-    for base_name, files in similar_files.items():
-        metadata = prompt_for_metadata(base_name)
-        for file in files:
-            print(f"Assigning metadata to: {file}")
-            # Here, implement the logic to save the metadata to each file
-
 ##################
 ##################
 ######
@@ -610,10 +581,29 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
         shp_files, geotiff_files = self.search_geodata_files(directory)
         geospatial_metadata_records = []
 
+        # Append extracted metadata to the list
         for file_path in shp_files + geotiff_files:
             metadata = self.extract_metadata(file_path, os.path.splitext(file_path)[1])
             if metadata:
                 geospatial_metadata_records.append(metadata)
+
+        # Now write the metadata to the XML tree
+        root = ET.Element("Geospatial_Files")
+        for metadata in geospatial_metadata_records:
+            file_element = ET.SubElement(root, "File")
+            for key, value in metadata.items():
+                ET.SubElement(file_element, key).text = str(value)
+
+        # Return the constructed XML tree root
+        return root
+
+    def create_geospatial_metadata(self, metadata_records, root_element_name="Geospatial_Files"):
+        root = ET.Element(root_element_name)
+        for metadata in metadata_records:
+            element = ET.SubElement(root, "File")
+            for key, value in metadata.items():
+                ET.SubElement(element, key).text = str(value)
+        return root
 
         return self.create_Geospatial_metadata(geospatial_metadata_records, "output_path.xml", "Geospatial_Files")
 
@@ -628,30 +618,38 @@ class GeospatialMetadataExtractor(BaseMetadataExtractor):
         return associated_files
 
     @staticmethod
-    def search_geodata_files(directory):
+    def search_geodata_files(start_dir):
+        total_files = count_files(start_dir, GEOSPATIAL_FILE_TYPES)
+
+        # Create and display the message window
+        message_root = tk.Tk()
+        message_root.title("Processing")
+        message_label = tk.Label(message_root, text=f"Searching geospatial files ({total_files} files)... please wait")
+        message_label.pack(padx=20, pady=20)
+        message_root.update()
+
         shp_files = []
         geotiff_files = []
-        for root, dirs, files in os.walk(directory):
-            for file in files:
-                if file.lower().endswith('.shp'):
-                    shp_files.append(os.path.join(root, file))
-                elif file.lower().endswith(('.tif', '.tiff')):
-                    geotiff_files.append(os.path.join(root, file))
-        return shp_files, geotiff_files
 
-    @staticmethod
-    def create_Geospatial_metadata(metadata_records, output_path, root_element_name):
-        root = ET.Element(root_element_name)
-        for metadata in metadata_records:
-            element = ET.SubElement(root, "File")
-            for key, value in metadata.items():
-                ET.SubElement(element, key).text = str(value)
-        tree = ET.ElementTree(root)
-        tree.write(output_path, encoding='utf-8', xml_declaration=True)
-        if metadata_records:
-            print(f"The metadata XML file has been created at: {output_path}")
-        else:
-            print("No supported files found for XML creation.")
+        for root, dirs, files in os.walk(start_dir):
+            dirs[:] = [d for d in dirs if not is_excluded_dir(d)]  # Exclude certain directories
+            for file in files:
+                # Define the full file path
+                file_path = os.path.join(root, file)
+                if file.lower().endswith('.zip'):
+                    continue  # Skip zip files
+                if any(file.lower().endswith(ext) for ext in GEOSPATIAL_FILE_TYPES):
+                    if file.lower().endswith('.shp'):
+                        shp_files.append(file_path)
+                        print(f"Detected shapefile: {file_path}")  # Debugging log for shapefiles
+                    elif file.lower().endswith('.tif') or file.lower().endswith('.tiff'):
+                        geotiff_files.append(file_path)
+                        print(f"Detected GeoTIFF file: {file_path}")  # Debugging log for GeoTIFF files
+
+        # Close the message window
+        message_root.destroy()
+
+        return shp_files, geotiff_files
 
 # New Folder Level Metadata Extractor
 class FolderLevelMetadataExtractor(BaseMetadataExtractor):
@@ -929,15 +927,6 @@ if __name__ == "__main__":
     geophysics_metadata = geophysics_extractor.process_geophysics_metadata(directory)  # Pass 'directory' as an argument
     if geophysics_metadata is not None:
         combined_root.append(geophysics_metadata)
-
-    # New call to find similar files and assign metadata
-    similar_files = find_similar_files(directory)
-
-    if similar_files:
-        print(f"Found similar files: {similar_files}")
-        assign_metadata_to_similar_files(similar_files)
-    else:
-        print("No similar files found.")
 
     # Write Combined Metadata XML
     combined_tree = ET.ElementTree(combined_root)
