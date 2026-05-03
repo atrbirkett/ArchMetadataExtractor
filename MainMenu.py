@@ -18,31 +18,31 @@ def set_style():
 
 def launch_edit_xml():
     try:
-        subprocess.run(['python', 'metadata_edit.py'], check=True)
+        subprocess.run([sys.executable, 'metadata_edit.py'], check=True)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to launch metadata_edit.py: {e}")
 
 def launch_metadata_extractor():
     try:
-        subprocess.run(['python', 'metadata_extractor_main.py'], check=True)
+        subprocess.run([sys.executable, 'metadata_extractor_main.py'], check=True)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to launch metadata_extractor_main.py: {e}")
-        
+
 def launch_folder_tree():
     try:
-        subprocess.run(['python', 'metadata_foldertree.py'], check=True)
+        subprocess.run([sys.executable, 'metadata_foldertree.py'], check=True)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to launch metadata_foldertree.py: {e}")
 
 def launch_project_geophys():
     try:
-        subprocess.run(['python', 'project_folder_geophys.py'], check=True)
+        subprocess.run([sys.executable, 'project_folder_geophys.py'], check=True)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to launch project_folder_geophys.py: {e}")
 
 def launch_project_archaeology():
     try:
-        subprocess.run(['python', 'project_folder_archaeology.py'], check=True)
+        subprocess.run([sys.executable, 'project_folder_archaeology.py'], check=True)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to launch project_folder_archaeology.py: {e}")
 
